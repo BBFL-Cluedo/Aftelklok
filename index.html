@@ -20,9 +20,11 @@ body {
 /* Overlay container voor tekst */
 .overlay {
     position: absolute;
-    top: 10%;      /* afstand vanaf bovenkant */
-    left: 5%;      /* afstand vanaf linkerkant */
+    top: 15%;             /* verticale positie vanaf bovenkant */
+    left: 50%;            /* horizontaal midden van het scherm */
+    transform: translateX(-50%); /* verschuif de div terug zodat hij echt gecentreerd is */
     color: white;
+    text-align: center;   /* tekst binnen de overlay gecentreerd */
     text-shadow: 2px 2px 8px rgba(0,0,0,0.5);
 }
 
@@ -104,7 +106,9 @@ function updateCountdown() {
     // Toon grote klok
     document.getElementById('countdown').textContent = 
         `${hours.toString().padStart(2,'0')} : ${minutes.toString().padStart(2,'0')} : ${seconds.toString().padStart(2,'0')}`;
-    document.getElementById('message').textContent = 'Je bent te vroeg, er wordt nog volop gezocht op deze plaats door de politie. Kom terug wanneer de politie deze zone vrijgegeven heeft!';
+    document.getElementById('message').textContent = 'Jullie zijn te vroeg, er wordt nog volop gezocht op deze plaats door de politie.';
+    document.getElementById('message').textContent = 'Kom terug wanneer de politie deze zone vrijgegeven heeft!';
+     
 }
 
 // Start countdown
@@ -135,6 +139,7 @@ window.onload = startCountdown;
 </body>
     
 </html>
+
 
 
 
