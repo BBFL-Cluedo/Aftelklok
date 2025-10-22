@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<title>Hint 3</title>
+<style>
+    body {
+        font-family: 'Arial Black', Arial, sans-serif;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        background: linear-gradient(135deg, #ff9a9e, #fad0c4);
+        color: #fff;
+        text-align: center;
+    }
+    h1 {
+        font-size: 3em;
+        margin-bottom: 20px;
+        text-shadow: 2px 2px 8px rgba(0,0,0,0.3);
+    }
+    #countdown {
+        font-size: 4em;
+        font-weight: bold;
+        letter-spacing: 0.05em;
+        text-shadow: 3px 3px 10px rgba(0,0,0,0.4);
+        animation: pulse 1s infinite alternate;
+    }
+    @keyframes pulse {
+        from { transform: scale(1); }
+        to { transform: scale(1.05); }
+    }
+    #message {
+        margin-top: 20px;
+        font-size: 1.5em;
+        text-shadow: 1px 1px 5px rgba(0,0,0,0.3);
+    }
+</style>
+<script>
+// Configuratie
+const redirectURL = 'https://voorbeeld.com/andere-pagina'; // vervang door jouw URL
+const targetISO = '2025-10-22T22:30:00+01:00'; // UTC+1 (Brussels)
+
+// Haal betrouwbare tijd op van API
+async function fetchTime() {
+    try {
+        const resp = await fetch('https://worldtimeapi.org/api/timezone/Europe/Brussels');
+        if (!resp.ok) throw new Error('API niet bereikbaar');
+        const data = await resp.json();
+        return new Date(data.datetime);
+    } catch (err) {
+        console.error('Kon tijd niet ophalen:', err);
+        return null;
+    }
+}
+
+// Update de countdown
+async function updateCountdown() {
+    const now = await fetchTime();
+    if (!now) {
+        document.getElementById('message').textContent = 'Kon de tijd niet verifiëren.';
+        return;
+    }
+
+    const target = new Date(targetISO);
+    const diff = target - now;
+
+    if (diff <= 0) {
+        window.location.href = redirectURL;
+        return;
+    }
+
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+    // Toon grote klok
+    document.getElementById('countdown').textContent = 
+        `${hours.toString().padStart(2,'0')} : ${minutes.toString().padStart(2,'0')} : ${seconds.toString().padStart(2,'0')}`;
+    document.getElementById('message').textContent = 'Je bent te vroeg!';
+}
+
+// Start countdown
+async function startCountdown() {
+    await updateCountdown(); // eerste keer
+    setInterval(updateCountdown, 1000);
+}
+
+window.onload = startCountdown;
+</script>
+</head>
+<body>
+<h1>Hint 3</h1>
+<div id="countdown">-- : -- : --</div>
+<div id="message"></div>
+</body>
+</html>
