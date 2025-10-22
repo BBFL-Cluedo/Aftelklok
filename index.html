@@ -6,51 +6,71 @@
 <title>Verborgen aanwijzing</title>
     
 <style>
-    body {
-        font-family: 'Arial Black', Arial, sans-serif;
-        height: 100vh;
-        margin: 0;
-        background-image: url('Foto%202024.jpg'); /* Let op spatie vervangen door %20 */
-        background-size: cover;
-        background-position: center;
-        background-repeat: no-repeat;
-    }
-    h1 {
-        position: absolute;
-        top: 100px
-        left 250px
-        font-size: 3em;
-        margin-bottom: 10px;
-        text-shadow: 2px 2px 8px rgba(0,0,0,0.3);
-    }
-    #countdown {
-        position: absolute;
-        top: 200px
-        left 250px
-        font-size: 4em;
-        font-weight: bold;
-        letter-spacing: 0.05em;
-        text-shadow: 3px 3px 10px rgba(0,0,0,0.4);
-        animation: pulse 1s infinite alternate;
-    }
-    @keyframes pulse {
-        from { transform: scale(1); }
-        to { transform: scale(1.05); }
-    }
-    #message {
-        position: absolute;
-        top: 400px
-        left 250px
-        margin-top: 20px;
-        font-size: 1.5em;
-        text-shadow: 1px 1px 5px rgba(0,0,0,0.3);
-    }
+body {
+    font-family: 'Arial Black', Arial, sans-serif;
+    margin: 0;
+    height: 100vh;
+    background-image: url('Foto%202024.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    position: relative;
+}
+
+/* Overlay container voor tekst */
+.overlay {
+    position: absolute;
+    top: 10%;      /* afstand vanaf bovenkant */
+    left: 5%;      /* afstand vanaf linkerkant */
+    color: white;
+    text-shadow: 2px 2px 8px rgba(0,0,0,0.5);
+}
+
+/* Titel */
+h1 {
+    font-size: 3em;
+    margin-bottom: 0.5em;
+}
+
+/* Countdown */
+#countdown {
+    font-size: 3.5em;
+    font-weight: bold;
+    letter-spacing: 0.05em;
+    animation: pulse 1s infinite alternate;
+}
+
+/* Pulse animatie */
+@keyframes pulse {
+    from { transform: scale(1); }
+    to { transform: scale(1.05); }
+}
+
+/* Bericht */
+#message {
+    margin-top: 15px;
+    font-size: 1.5em;
+}
+
+/* Media queries voor kleinere schermen */
+@media (max-width: 768px) { /* tablets */
+    h1 { font-size: 2em; }
+    #countdown { font-size: 2.5em; }
+    #message { font-size: 1.2em; }
+}
+
+@media (max-width: 480px) { /* smartphones */
+    .overlay { top: 5%; left: 5%; }
+    h1 { font-size: 1.5em; }
+    #countdown { font-size: 2em; }
+    #message { font-size: 1em; }
+}
 </style>
     
 <script>
 // Configuratie
 const redirectURL = 'https://n6bsdjqo1mx.typeform.com/to/Ktx0KYgk'; // vervang door jouw URL
-const targetISO = '2025-10-22T23:30:00+01:00'; // UTC+1 (Brussels)
+const targetISO = '2025-10-22T23:50:00+02:00'; // UTC+1 (Brussels)
 
 // Haal betrouwbare tijd op van API
 async function fetchTime() {
@@ -115,6 +135,7 @@ window.onload = startCountdown;
 </body>
     
 </html>
+
 
 
 
