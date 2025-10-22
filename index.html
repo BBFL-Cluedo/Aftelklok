@@ -52,6 +52,11 @@ h1 {
 #message {
     margin-top: 15px;
     font-size: 1.5em;
+    text-shadow: 1px 1px 5px rgba(0,0,0,0.3);
+    max-width: 80%;          /* tekst mag maximaal 80% van overlay zijn */
+    word-wrap: break-word;   /* lange woorden breken indien nodig */
+    text-align: center;      /* tekst gecentreerd */
+    line-height: 1.4em;      /* iets meer ruimte tussen regels voor leesbaarheid */
 }
 
 /* Media queries voor kleinere schermen */
@@ -72,7 +77,7 @@ h1 {
 <script>
 // Configuratie
 const redirectURL = 'https://n6bsdjqo1mx.typeform.com/to/Ktx0KYgk'; // vervang door jouw URL
-const targetISO = '2025-10-22T23:50:00+02:00'; // UTC+1 (Brussels)
+const targetISO = '2025-10-23T12:00:00+02:00'; // UTC+2 (Brussels) zomertijd
 
 // Haal betrouwbare tijd op van API
 async function fetchTime() {
@@ -106,9 +111,8 @@ function updateCountdown() {
     // Toon grote klok
     document.getElementById('countdown').textContent = 
         `${hours.toString().padStart(2,'0')} : ${minutes.toString().padStart(2,'0')} : ${seconds.toString().padStart(2,'0')}`;
-    document.getElementById('message').textContent = 'Jullie zijn te vroeg, er wordt nog volop gezocht op deze plaats door de politie.';
-    document.getElementById('message').textContent = 'Kom terug wanneer de politie deze zone vrijgegeven heeft!';
-     
+    document.getElementById('message').textContent ='Jullie zijn te vroeg, er wordt nog volop gezocht op deze plaats door de politie. Kom terug wanneer de politie deze zone vrijgegeven heeft!';
+
 }
 
 // Start countdown
@@ -139,6 +143,7 @@ window.onload = startCountdown;
 </body>
     
 </html>
+
 
 
 
