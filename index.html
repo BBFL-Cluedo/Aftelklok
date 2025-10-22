@@ -1,15 +1,13 @@
 <!DOCTYPE html>
 <html lang="nl">
+    
 <head>
 <meta charset="UTF-8">
 <title>Verborgen aanwijzing</title>
+    
 <style>
     body {
         font-family: 'Arial Black', Arial, sans-serif;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
         height: 100vh;
         margin: 0;
         background-image: url('Foto%202024.jpg'); /* Let op spatie vervangen door %20 */
@@ -18,11 +16,17 @@
         background-repeat: no-repeat;
     }
     h1 {
+        position: absolute;
+        top: 20px
+        left 50px
         font-size: 3em;
         margin-bottom: 10px;
         text-shadow: 2px 2px 8px rgba(0,0,0,0.3);
     }
     #countdown {
+        position: absolute;
+        top: 50px
+        left 50px
         font-size: 4em;
         font-weight: bold;
         letter-spacing: 0.05em;
@@ -34,11 +38,15 @@
         to { transform: scale(1.05); }
     }
     #message {
+        position: absolute;
+        top: 80px
+        left 50px
         margin-top: 20px;
         font-size: 1.5em;
         text-shadow: 1px 1px 5px rgba(0,0,0,0.3);
     }
 </style>
+    
 <script>
 // Configuratie
 const redirectURL = 'https://voorbeeld.com/andere-pagina'; // vervang door jouw URL
@@ -58,15 +66,11 @@ async function fetchTime() {
 }
 
 // Update de countdown
-async function updateCountdown() {
-    const now = await fetchTime();
-    if (!now) {
-        document.getElementById('message').textContent = 'Kon de tijd niet verifiëren.';
-        return;
-    }
+function updateCountdown() {
+    if (!currentTime) return;
 
     const target = new Date(targetISO);
-    const diff = target - now;
+    const diff = target - currentTime;
 
     if (diff <= 0) {
         window.location.href = redirectURL;
@@ -80,24 +84,38 @@ async function updateCountdown() {
     // Toon grote klok
     document.getElementById('countdown').textContent = 
         `${hours.toString().padStart(2,'0')} : ${minutes.toString().padStart(2,'0')} : ${seconds.toString().padStart(2,'0')}`;
-    document.getElementById('message').textContent = 'Je bent te vroeg!';
+    document.getElementById('message').textContent = 'Je bent te vroeg, er wordt nog volop gezocht op deze plaats door de politie. Kom terug wanneer de politie deze zone vrijgegeven heeft!';
 }
 
 // Start countdown
 async function startCountdown() {
-    await updateCountdown(); // eerste keer
-    setInterval(updateCountdown, 1000);
+    currentTime = await fetchTime();
+    if (!currentTime) {
+        document.getElementById('message').textContent = 'Kon de tijd niet verifiëren, lokale tijd wordt gebruikt.';
+        currentTime = new Date(); // fallback
+    }
+
+    // Update elke seconde lokaal
+    updateCountdown();
+    setInterval(() => {
+        currentTime = new Date(currentTime.getTime() + 1000); // teller loopt lokaal
+        updateCountdown();
+    }, 1000);
 }
 
 window.onload = startCountdown;
 </script>
+    
 </head>
+    
 <body>
-<h1>Hint 3</h1>
+<h1>Verborgen aanwijzing</h1>
 <div id="countdown">-- : -- : --</div>
 <div id="message"></div>
 </body>
+    
 </html>
+
 
 
 
