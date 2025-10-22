@@ -26,6 +26,7 @@ body {
     color: white;
     text-align: center;   /* tekst binnen de overlay gecentreerd */
     text-shadow: 2px 2px 8px rgba(0,0,0,0.5);
+    max-width: 80%;        /* voorkomt dat tekst te breed wordt */
 }
 
 /* Titel */
@@ -137,12 +138,14 @@ window.onload = startCountdown;
 </head>
     
 <body>
-<h1>Verborgen aanwijzing</h1>
-<div id="countdown">-- : -- : --</div>
-<div id="message"></div>
+  <div class="overlay">
+    <h1>Verborgen aanwijzing</h1>
+    <div id="countdown">-- : -- : --</div>
+    <div id="message">
+      Jullie zijn te vroeg, er wordt nog volop gezocht op deze plaats door de politie. Kom terug wanneer de politie deze zone vrijgegeven heeft!
+    </div>
+  </div>
 </body>
-    
-</html>
 
 
 
