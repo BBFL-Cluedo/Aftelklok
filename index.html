@@ -2,7 +2,7 @@
 <html lang="nl">
 <head>
 <meta charset="UTF-8">
-<title>Tijd Check</title>
+<title>Hint 3</title>
 <style>
     body {
         font-family: 'Arial Black', Arial, sans-serif;
@@ -12,14 +12,13 @@
         align-items: center;
         height: 100vh;
         margin: 0;
-        background: linear-gradient(135deg, #7f00ff, #e100ff);
+        background: linear-gradient(135deg, #ff9a9e, #fad0c4);
         color: #fff;
         text-align: center;
-        overflow: hidden;
     }
     h1 {
         font-size: 3em;
-        margin-bottom: 30px;
+        margin-bottom: 20px;
         text-shadow: 2px 2px 8px rgba(0,0,0,0.3);
     }
     #countdown {
@@ -38,30 +37,11 @@
         font-size: 1.5em;
         text-shadow: 1px 1px 5px rgba(0,0,0,0.3);
     }
-    /* Progress bar */
-    #progress-container {
-        width: 80%;
-        max-width: 600px;
-        height: 20px;
-        background: rgba(255,255,255,0.2);
-        border-radius: 10px;
-        margin-top: 40px;
-        overflow: hidden;
-        box-shadow: inset 0 0 5px rgba(0,0,0,0.3);
-    }
-    #progress-bar {
-        height: 100%;
-        width: 0%;
-        background: linear-gradient(90deg, #00e1ff, #00ff9d);
-        border-radius: 10px;
-        transition: width 1s linear;
-    }
 </style>
 <script>
 // Configuratie
 const redirectURL = 'https://voorbeeld.com/andere-pagina'; // vervang door jouw URL
-const targetISO = '2025-11-01T22:01:00+01:00'; // UTC+1 (Brussels)
-let startTime = null;
+const targetISO = '2025-10-22T22:30:00+01:00'; // UTC+1 (Brussels)
 
 // Haal betrouwbare tijd op van API
 async function fetchTime() {
@@ -76,7 +56,7 @@ async function fetchTime() {
     }
 }
 
-// Update de countdown en voortgangsbalk
+// Update de countdown
 async function updateCountdown() {
     const now = await fetchTime();
     if (!now) {
@@ -85,10 +65,7 @@ async function updateCountdown() {
     }
 
     const target = new Date(targetISO);
-    if (!startTime) startTime = new Date(now.getTime() - 1000); // eerste init (schatting)
-
     const diff = target - now;
-    const total = target - startTime;
 
     if (diff <= 0) {
         window.location.href = redirectURL;
@@ -99,19 +76,15 @@ async function updateCountdown() {
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
     const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
-    // Update klok
+    // Toon grote klok
     document.getElementById('countdown').textContent = 
         `${hours.toString().padStart(2,'0')} : ${minutes.toString().padStart(2,'0')} : ${seconds.toString().padStart(2,'0')}`;
     document.getElementById('message').textContent = 'Je bent te vroeg!';
-
-    // Update voortgangsbalk
-    const progress = 100 - ((diff / total) * 100);
-    document.getElementById('progress-bar').style.width = `${Math.min(progress, 100)}%`;
 }
 
 // Start countdown
 async function startCountdown() {
-    await updateCountdown(); // eerste keer meteen
+    await updateCountdown(); // eerste keer
     setInterval(updateCountdown, 1000);
 }
 
@@ -119,11 +92,10 @@ window.onload = startCountdown;
 </script>
 </head>
 <body>
-<h1>Tijd Check</h1>
+<h1>Hint 3</h1>
 <div id="countdown">-- : -- : --</div>
 <div id="message"></div>
-<div id="progress-container">
-    <div id="progress-bar"></div>
-</div>
 </body>
 </html>
+
+
