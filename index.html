@@ -38,7 +38,7 @@ h1 {
 }
 
 /* Countdown */
-#count {
+#countdown {
     font-size: 4.5em;
     font-weight: bold;
     letter-spacing: 0.05em;
@@ -65,95 +65,86 @@ h1 {
 /* Media queries voor kleinere schermen */
 @media (max-width: 768px) { /* tablets */
     h1 { font-size: 2.8em; }
-    #count { font-size: 3em; }
+    #countdown { font-size: 3em; }
     #message { font-size: 2em; }
 }
 
 @media (max-width: 480px) { /* smartphones */
     .overlay { top: 5%; left: 5%; }
     h1 { font-size: 2em; }
-    #count { font-size: 2.3em; }
+    #countdown { font-size: 2.3em; }
     #message { font-size: 1.5em; }
 }
 </style>
-       
+    
+<script>
+// Configuratie
+const redirectURL = 'https://bbfl.formaloo.co/aanwijzing'; // vervang door jouw URL
+const targetISO = '2025-10-25T19:30:00+02:00'; // UTC+2 (Brussels) zomertijd
+
+// Haal betrouwbare tijd op van API
+async function fetchTime() {
+    try {
+        const resp = await fetch('https://worldtimeapi.org/api/timezone/Europe/Brussels');
+        if (!resp.ok) throw new Error('API niet bereikbaar');
+        const data = await resp.json();
+        return new Date(data.datetime);
+    } catch (err) {
+        console.error('Kon tijd niet ophalen:', err);
+        return null;
+    }
+}
+
+// Update de countdown
+function updateCountdown() {
+    if (!currentTime) return;
+
+    const target = new Date(targetISO);
+    const diff = target - currentTime;
+
+    if (diff <= 0) {
+        window.location.href = redirectURL;
+        return;
+    }
+
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+    // Toon grote klok
+    document.getElementById('countdown').textContent = 
+        `${hours.toString().padStart(2,'0')} : ${minutes.toString().padStart(2,'0')} : ${seconds.toString().padStart(2,'0')}`;
+    document.getElementById('message').textContent ='Jullie zijn te vroeg, er wordt nog volop gezocht op deze plaats door de politie. Kom terug wanneer de politie deze zone vrijgegeven heeft!';
+
+}
+
+// Start countdown
+async function startCountdown() {
+    currentTime = await fetchTime();
+    if (!currentTime) {
+        document.getElementById('message').textContent = 'Kon de tijd niet verifiëren, lokale tijd wordt gebruikt.';
+        currentTime = new Date(); // fallback
+    }
+
+    // Update elke seconde lokaal
+    updateCountdown();
+    setInterval(() => {
+        currentTime = new Date(currentTime.getTime() + 1000); // teller loopt lokaal
+        updateCountdown();
+    }, 1000);
+}
+
+window.onload = startCountdown;
+</script>
+    
 </head>
     
 <body>
   <div class="overlay">
     <h1>Verborgen aanwijzing</h1>
-    <div id="count">-- : -- : --</div>
+    <div id="countdown">-- : -- : --</div>
     <div id="message">
       Jullie zijn te vroeg, er wordt nog volop gezocht op deze plaats door de politie. Kom terug wanneer de politie deze zone vrijgegeven heeft!
     </div>
   </div>
-
-    <div id="warning" style="display:none; color:orange; text-align:center; font-size:1.2em;"></div>
-
-
-<script>
-  // Servertijd op het moment dat de pagina is gegenereerd
-  const serverTimeAtLoad = <?php echo round(microtime(true) * 1000); ?>; // ms sinds epoch
-  const targetISO = '2025-11-01T22:30:00+01:00';
-  const redirectURL = 'https://bbfl.formaloo.co/bbfl_aanwijzing';
-
-  const targetMs = new Date(targetISO).getTime();
-  const perfNowAtLoad = performance.now();
-
-  function updateCountdown() {
-    const nowPerf = performance.now();
-    const estimatedServerMs = serverTimeAtLoad + (nowPerf - perfNowAtLoad);
-    const diff = targetMs - estimatedServerMs;
-
-    if (diff <= 0) {
-      document.getElementById('count').textContent = 'Redirecten...';
-      setTimeout(() => (window.location.href = redirectURL), 300);
-      return;
-    }
-
-    const hours = Math.floor(diff / 3600000);
-    const minutes = Math.floor((diff % 3600000) / 60000);
-    const seconds = Math.floor((diff % 60000) / 1000);
-    document.getElementById('count').textContent =
-      `${hours.toString().padStart(2,'0')} : ${minutes.toString().padStart(2,'0')} : ${seconds.toString().padStart(2,'0')}`;
-  }
-
-  setInterval(updateCountdown, 1000);
-  updateCountdown();
-</script>
-
 </body>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
