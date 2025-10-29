@@ -92,115 +92,38 @@ h1 {
 
 
 <script>
-const targetISO = '2025-10-29T22:30:00+01:00'; // Doelmoment (Europe/Brussels)
-const redirectURL = 'https://bbfl.formaloo.co/bbfl_aanwijzing';
+  // Servertijd op het moment dat de pagina is gegenereerd
+  const serverTimeAtLoad = <?php echo round(microtime(true) * 1000); ?>; // ms sinds epoch
+  const targetISO = '2025-11-01T22:30:00+01:00';
+  const redirectURL = 'https://bbfl.formaloo.co/bbfl_aanwijzing';
 
-// Primaire en backup tijdbronnen
-const timeApis = [
-  'https://worldtimeapi.org/api/timezone/Europe/Brussels',
-  'https://timeapi.io/api/Time/current/zone?timeZone=Europe/Brussels'
-];
+  const targetMs = new Date(targetISO).getTime();
+  const perfNowAtLoad = performance.now();
 
-const countdownEl = document.getElementById('count');
-let targetMs = new Date(targetISO).getTime();
+  function updateCountdown() {
+    const nowPerf = performance.now();
+    const estimatedServerMs = serverTimeAtLoad + (nowPerf - perfNowAtLoad);
+    const diff = targetMs - estimatedServerMs;
 
-// Variabelen om servertijd te berekenen
-let serverTimeAtFetchMs = null;
-let perfNowAtFetch = null;
-
-async function fetchServerTime() {
-  for (const url of timeApis) {
-    try {
-      console.log('⏳ Probeer tijdbron:', url);
-      const resp = await fetch(url + '?_=' + Date.now(), { cache: 'no-store' });
-      if (!resp.ok) throw new Error('Geen 200');
-      const data = await resp.json();
-
-      // Ondersteuning voor beide API-formaten
-      const timeStr = data.datetime || data.dateTime;
-      if (!timeStr) throw new Error('Geen geldige tijd gevonden');
-
-      const serverDate = new Date(timeStr);
-      console.log('✅ Servertijd ontvangen:', serverDate.toISOString());
-      return serverDate.getTime();
-    } catch (err) {
-      console.warn('⚠️ Tijdbron faalde:', url, err);
+    if (diff <= 0) {
+      document.getElementById('count').textContent = 'Redirecten...';
+      setTimeout(() => (window.location.href = redirectURL), 300);
+      return;
     }
-  }
-  throw new Error('Geen enkele tijdbron werkte');
-}
 
-async function init() {
-  try {
-    const serverMs = await fetchServerTime();
-    serverTimeAtFetchMs = serverMs;
-    perfNowAtFetch = performance.now();
-
-    startTicker();
-  } catch (err) {
-    console.error('❌ Geen servertijd beschikbaar:', err);
-    countdownEl.textContent = 'Kon servertijd niet ophalen.';
-  }
-}
-
-function msToDHMS(ms) {
-  if (ms < 0) ms = 0;
-  const totalSeconds = Math.floor(ms / 1000);
-  const days = Math.floor(totalSeconds / 86400);
-  const hours = Math.floor((totalSeconds % 86400) / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-  return { days, hours, minutes, seconds };
-}
-
-function two(n) {
-  return n.toString().padStart(2, '0');
-}
-
-function updateAndMaybeRedirect() {
-  if (!serverTimeAtFetchMs) return;
-
-  const nowPerf = performance.now();
-  const estimatedServerMs = serverTimeAtFetchMs + (nowPerf - perfNowAtFetch);
-  const diffMs = targetMs - estimatedServerMs;
-
-  if (diffMs <= 0) {
-    countdownEl.textContent = 'Redirecten...';
-    setTimeout(() => (window.location.href = redirectURL), 300);
-    return;
+    const hours = Math.floor(diff / 3600000);
+    const minutes = Math.floor((diff % 3600000) / 60000);
+    const seconds = Math.floor((diff % 60000) / 1000);
+    document.getElementById('count').textContent =
+      `${hours.toString().padStart(2,'0')} : ${minutes.toString().padStart(2,'0')} : ${seconds.toString().padStart(2,'0')}`;
   }
 
-  const { days, hours, minutes, seconds } = msToDHMS(diffMs);
-  let parts = [];
-  if (days > 0) parts.push(`${days}d`);
-  parts.push(`${hours}u`);
-  parts.push(`${two(minutes)}m`);
-  parts.push(`${two(seconds)}s`);
-
-  countdownEl.innerHTML = `Aftellen: ${parts.join(' ')}`;
-}
-
-function startTicker() {
-  updateAndMaybeRedirect();
-  setInterval(updateAndMaybeRedirect, 1000);
-
-  // Her-synchroniseer elke 5 minuten
-  setInterval(async () => {
-    try {
-      const serverMs = await fetchServerTime();
-      serverTimeAtFetchMs = serverMs;
-      perfNowAtFetch = performance.now();
-      console.log('🔄 Servertijd opnieuw gesynchroniseerd');
-    } catch (err) {
-      console.warn('Her-sync mislukt:', err);
-    }
-  }, 5 * 60 * 1000);
-}
-
-init();
+  setInterval(updateCountdown, 1000);
+  updateCountdown();
 </script>
 
 </body>
+
 
 
 
