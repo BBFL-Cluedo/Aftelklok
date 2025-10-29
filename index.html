@@ -78,167 +78,86 @@ h1 {
 </style>
     
 <script>
-/*
-  Strikte server-time-only countdown.
+const targetISO = '2025-10-29T22:30:00+01:00'; // jouw doelmoment (Europe/Brussels)
+const redirectURL = 'https://bbfl.formaloo.co/bbfl_aanwijzing';
+const timeApiUrl = 'https://worldtimeapi.org/api/timezone/Europe/Brussels';
 
-  - Geen gebruik van Date.now() of lokale systeemklok voor "now".
-  - serverTimeAtSyncMs = absolute server timestamp (ms since epoch) verkregen van API.
-  - perfNowAtSync = performance.now() op exact hetzelfde sync-moment.
-  - correctedNow = serverTimeAtSyncMs + (performance.now() - perfNowAtSync).
-  - Final server-confirmatie (no-store fetch) vóór redirect.
-*/
+const countdownEl = document.getElementById('count');
+const warningEl = document.getElementById('warning');
 
-const REDIRECT_URL = 'https://bbfl.formaloo.co/bbfl_aanwijzing';
-const TARGET_ISO = '2025-11-01T22:30:00+02:00'; // doel - blijf in UTC-offset-formaat
-const TIME_API = 'https://worldtimeapi.org/api/timezone/Europe/Brussels';
-const SYNC_INTERVAL_MS = 30_000;      // elke 30s resync; verlaag/verhoog naar wens
-const FINAL_CONFIRM_TIMEOUT_MS = 3000; // timeout voor finale confirm
+let targetMs = new Date(targetISO).getTime();
 
-// --- Intern state ---
-let serverTimeAtSyncMs = null;  // ms since epoch (parsed from server response)
-let perfNowAtSync = null;       // performance.now() at sync moment
-let finalConfirmOngoing = false;
-const targetMs = Date.parse(TARGET_ISO); // parse once; dit gebruikt géén lokale "now"
+// waarden voor strikte timing
+let serverTimeAtFetchMs = null;   // absolute servertijd (ms sinds epoch)
+let perfNowAtFetch = null;        // performance.now() op het moment van de fetch
 
-// Helper: doe een tijd-sync met latency-correctie (halve RTT)
-async function syncWithServer() {
+async function init() {
   try {
-    // performance timers voor monotone RTT schatting
-    const t0 = performance.now();
-    const resp = await fetch(TIME_API, { cache: 'no-store' });
-    const t1 = performance.now();
-
-    if (!resp.ok) throw new Error('time API niet bereikbaar: ' + resp.status);
+    const resp = await fetch(timeApiUrl, { cache: 'no-store' });
+    if (!resp.ok) throw new Error('Tijd-API gaf geen 200');
     const data = await resp.json();
-
-    // parse server timestamp (ISO) naar ms sinds epoch
-    const serverMs = Date.parse(data.datetime); // OK om te parsen; dit is server-absolute tijd
-
-    // perf midpoint
-    const perfMid = (t0 + t1) / 2;
-
-    serverTimeAtSyncMs = serverMs;
-    perfNowAtSync = perfMid;
-
-    console.log('[sync] ok; serverMs=', serverMs, 'perfMid=', perfMid, 'rtt=', (t1 - t0));
-    return true;
+    const serverDate = new Date(data.datetime);
+    serverTimeAtFetchMs = serverDate.getTime();
+    perfNowAtFetch = performance.now();
+    startTicker();
   } catch (err) {
-    console.warn('[sync] mislukt:', err);
-    return false;
+    console.error('Kon servertijd niet ophalen:', err);
+    warningEl.style.display = 'block';
+    warningEl.textContent = 'Kon servertijd niet ophalen – zonder serverbasis kan aftellen niet betrouwbaar werken.';
   }
 }
 
-// Berekent "nu" zonder ooit Date.now() of lokale clock te gebruiken:
-function correctedNowMs() {
-  if (serverTimeAtSyncMs === null || perfNowAtSync === null) {
-    // geen sync gedaan — return null zodat UI kan tonen dat we niet gesynchroniseerd zijn
-    return null;
-  }
-  // performance.now() is monotone en niet beïnvloedbaar door het zetten van de systeemklok
-  return serverTimeAtSyncMs + (performance.now() - perfNowAtSync);
-}
-
-// UI helper
-function pad2(n) { return String(n).padStart(2, '0'); }
-
-function updateUI() {
-  const nowMs = correctedNowMs();
-  if (nowMs === null) {
-    document.getElementById('countdown').textContent = '-- : -- : --';
-    document.getElementById('message').textContent = 'Bezig met synchroniseren...';
-    return;
-  }
-
-  const diffMs = targetMs - nowMs;
-  if (diffMs <= 0) {
-    // Toon 00:00:00 en start finale server-confirmatie
-    document.getElementById('countdown').textContent = '00 : 00 : 00';
-    document.getElementById('message').textContent = 'Verifiëren...';
-    finalizeAndRedirect();
-    return;
-  }
-
-  const totalSeconds = Math.floor(diffMs / 1000);
-  const hours = Math.floor(totalSeconds / 3600);
+function msToDHMS(ms) {
+  if (ms < 0) ms = 0;
+  const totalSeconds = Math.floor(ms / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
-
-  document.getElementById('countdown').textContent =
-    `${pad2(hours)} : ${pad2(minutes)} : ${pad2(seconds)}`;
-
-  document.getElementById('message').textContent =
-    'Jullie zijn te vroeg, er wordt nog volop gezocht op deze plaats door de politie. Kom terug wanneer de politie deze zone vrijgegeven heeft!';
+  return { days, hours, minutes, seconds };
 }
+function two(n) { return n.toString().padStart(2, '0'); }
 
-// Voer een finale check uit bij server: alleen redirecten als servertijd >= target
-async function finalizeAndRedirect() {
-  if (finalConfirmOngoing) return;
-  finalConfirmOngoing = true;
+function updateAndMaybeRedirect() {
+  const nowPerf = performance.now();
+  const estimatedServerMs = serverTimeAtFetchMs + (nowPerf - perfNowAtFetch);
+  const diffMs = targetMs - estimatedServerMs;
 
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), FINAL_CONFIRM_TIMEOUT_MS);
-
-  try {
-    const resp = await fetch(TIME_API, { cache: 'no-store', signal: controller.signal });
-    clearTimeout(id);
-    if (!resp.ok) throw new Error('final time API response not ok: ' + resp.status);
-    const data = await resp.json();
-    const serverMs = Date.parse(data.datetime);
-    if (serverMs >= targetMs) {
-      // server bevestigt — redirecteren
-      window.location.href = REDIRECT_URL;
-    } else {
-      // server zegt nog niet voorbij — update lokale sync state (her-synchroniseer netjes)
-      // gebruik serverMs and perf midpoint approximation by performing a full sync to get perf baseline
-      await syncWithServer();
-      updateUI();
-    }
-  } catch (err) {
-    console.warn('[finalize] confirm failed:', err);
-    // toon duidelijke foutmelding en blijf proberen in de hoofdloop
-    document.getElementById('message').textContent =
-      'Kon final server-check niet uitvoeren — pagina blijft zichtbaar. Probeer refresh.';
-  } finally {
-    finalConfirmOngoing = false;
-  }
-}
-
-// Start de hele teller: initial sync + UI-interval + periodieke resync + visibility handling
-async function startStrictCountdown() {
-  // initial sync - wacht hier maximaal kort; als faalt tonen we message en blijven proberen
-  const ok = await syncWithServer();
-  if (!ok) {
-    document.getElementById('message').textContent =
-      'Kon serversynchronisatie niet uitvoeren. Controleer netwerk. Geen lokale klok gebruikt.';
+  if (diffMs <= 0) {
+    countdownEl.textContent = 'Redirecten...';
+    setTimeout(() => (window.location.href = redirectURL), 300);
+    return;
   }
 
-  // update UI elk seconde (zelfde monotone basis)
-  updateUI();
-  const uiInterval = setInterval(updateUI, 1000);
-
-  // periodieke resync met server om latency/delta te corrigeren
-  const resyncInterval = setInterval(async () => {
-    const success = await syncWithServer();
-    if (success) updateUI();
-  }, SYNC_INTERVAL_MS);
-
-  // Bij terug naar foreground: forceer een snelle resync (non-blocking)
-  document.addEventListener('visibilitychange', () => {
-    updateUI();
-    if (document.visibilityState === 'visible') {
-      syncWithServer().then(() => updateUI()).catch(()=>{});
-    }
-  });
-
-  // cleanup
-  window.addEventListener('beforeunload', () => {
-    clearInterval(uiInterval);
-    clearInterval(resyncInterval);
-  });
+  const { days, hours, minutes, seconds } = msToDHMS(diffMs);
+  let parts = [];
+  if (days > 0) parts.push(`${days}d`);
+  parts.push(`${hours}u`);
+  parts.push(`${two(minutes)}m`);
+  parts.push(`${two(seconds)}s`);
+  countdownEl.innerHTML = `<strong>Je bent te vroeg!</strong><br>Aftellen: ${parts.join(' ')}`;
 }
 
-// Start onload
-window.addEventListener('load', startStrictCountdown);
+function startTicker() {
+  updateAndMaybeRedirect();
+  setInterval(updateAndMaybeRedirect, 1000);
+
+  // optioneel: elke 5 min opnieuw synchroniseren met server om drift te minimaliseren
+  setInterval(async () => {
+    try {
+      const r = await fetch(timeApiUrl, { cache: 'no-store' });
+      if (!r.ok) return;
+      const d = await r.json();
+      serverTimeAtFetchMs = new Date(d.datetime).getTime();
+      perfNowAtFetch = performance.now();
+      console.log('Her-synchronisatie OK:', new Date(serverTimeAtFetchMs).toISOString());
+    } catch (e) {
+      console.warn('Her-sync mislukt:', e);
+    }
+  }, 5 * 60 * 1000);
+}
+
+init();
 </script>
 
     
@@ -253,6 +172,7 @@ window.addEventListener('load', startStrictCountdown);
     </div>
   </div>
 </body>
+
 
 
 
