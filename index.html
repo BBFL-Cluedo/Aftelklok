@@ -91,33 +91,55 @@ h1 {
     <div id="warning" style="display:none; color:orange; text-align:center; font-size:1.2em;"></div>
 
 
- <script>
-const targetISO = '2025-10-29T22:30:00+01:00'; // jouw doelmoment (Europe/Brussels)
+<script>
+const targetISO = '2025-10-29T22:30:00+01:00'; // Doelmoment (Europe/Brussels)
 const redirectURL = 'https://bbfl.formaloo.co/bbfl_aanwijzing';
-const timeApiUrl = 'https://timeapi.io/api/Time/current/zone?timeZone=Europe/Brussels';
+
+// Primaire en backup tijdbronnen
+const timeApis = [
+  'https://worldtimeapi.org/api/timezone/Europe/Brussels',
+  'https://timeapi.io/api/Time/current/zone?timeZone=Europe/Brussels'
+];
 
 const countdownEl = document.getElementById('count');
-const warningEl = document.getElementById('warning');
-
 let targetMs = new Date(targetISO).getTime();
 
-// waarden voor strikte timing
-let serverTimeAtFetchMs = null;   // absolute servertijd (ms sinds epoch)
-let perfNowAtFetch = null;        // performance.now() op het moment van de fetch
+// Variabelen om servertijd te berekenen
+let serverTimeAtFetchMs = null;
+let perfNowAtFetch = null;
+
+async function fetchServerTime() {
+  for (const url of timeApis) {
+    try {
+      console.log('⏳ Probeer tijdbron:', url);
+      const resp = await fetch(url + '?_=' + Date.now(), { cache: 'no-store' });
+      if (!resp.ok) throw new Error('Geen 200');
+      const data = await resp.json();
+
+      // Ondersteuning voor beide API-formaten
+      const timeStr = data.datetime || data.dateTime;
+      if (!timeStr) throw new Error('Geen geldige tijd gevonden');
+
+      const serverDate = new Date(timeStr);
+      console.log('✅ Servertijd ontvangen:', serverDate.toISOString());
+      return serverDate.getTime();
+    } catch (err) {
+      console.warn('⚠️ Tijdbron faalde:', url, err);
+    }
+  }
+  throw new Error('Geen enkele tijdbron werkte');
+}
 
 async function init() {
   try {
-    const resp = await fetch(timeApiUrl, { cache: 'no-store' });
-    if (!resp.ok) throw new Error('Tijd-API gaf geen 200');
-    const data = await resp.json();
-    const serverDate = new Date(data.dateTime || data.datetime);
-    serverTimeAtFetchMs = serverDate.getTime();
+    const serverMs = await fetchServerTime();
+    serverTimeAtFetchMs = serverMs;
     perfNowAtFetch = performance.now();
+
     startTicker();
   } catch (err) {
-    console.error('Kon servertijd niet ophalen:', err);
-    warningEl.style.display = 'block';
-    warningEl.textContent = 'Kon servertijd niet ophalen – zonder serverbasis kan aftellen niet betrouwbaar werken.';
+    console.error('❌ Geen servertijd beschikbaar:', err);
+    countdownEl.textContent = 'Kon servertijd niet ophalen.';
   }
 }
 
@@ -130,9 +152,14 @@ function msToDHMS(ms) {
   const seconds = totalSeconds % 60;
   return { days, hours, minutes, seconds };
 }
-function two(n) { return n.toString().padStart(2, '0'); }
+
+function two(n) {
+  return n.toString().padStart(2, '0');
+}
 
 function updateAndMaybeRedirect() {
+  if (!serverTimeAtFetchMs) return;
+
   const nowPerf = performance.now();
   const estimatedServerMs = serverTimeAtFetchMs + (nowPerf - perfNowAtFetch);
   const diffMs = targetMs - estimatedServerMs;
@@ -149,31 +176,32 @@ function updateAndMaybeRedirect() {
   parts.push(`${hours}u`);
   parts.push(`${two(minutes)}m`);
   parts.push(`${two(seconds)}s`);
-  countdownEl.innerHTML = `<strong>Je bent te vroeg!</strong><br>Aftellen: ${parts.join(' ')}`;
+
+  countdownEl.innerHTML = `Aftellen: ${parts.join(' ')}`;
 }
 
 function startTicker() {
   updateAndMaybeRedirect();
   setInterval(updateAndMaybeRedirect, 1000);
 
-  // optioneel: elke 5 min opnieuw synchroniseren met server om drift te minimaliseren
+  // Her-synchroniseer elke 5 minuten
   setInterval(async () => {
     try {
-      const r = await fetch(timeApiUrl, { cache: 'no-store' });
-      if (!r.ok) return;
-      const d = await r.json();
-      serverTimeAtFetchMs = new Date(d.datetime).getTime();
+      const serverMs = await fetchServerTime();
+      serverTimeAtFetchMs = serverMs;
       perfNowAtFetch = performance.now();
-      console.log('Her-synchronisatie OK:', new Date(serverTimeAtFetchMs).toISOString());
-    } catch (e) {
-      console.warn('Her-sync mislukt:', e);
+      console.log('🔄 Servertijd opnieuw gesynchroniseerd');
+    } catch (err) {
+      console.warn('Her-sync mislukt:', err);
     }
   }, 5 * 60 * 1000);
 }
 
 init();
-</script>   
+</script>
+
 </body>
+
 
 
 
