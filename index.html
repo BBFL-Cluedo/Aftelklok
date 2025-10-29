@@ -79,60 +79,117 @@ h1 {
     
 <script>
 const redirectURL = 'https://bbfl.formaloo.co/bbfl_aanwijzing';
-const targetISO = '2025-11-01T22:30:00+02:00';
-let offset = 0; // verschil tussen lokale tijd en API-tijd in ms
+const targetISO = '2025-11-01T22:30:00+02:00'; // doeltijd in Brussels/UTC+2
+let offset = 0; // ms: serverTime - Date.now()
+let lastSync = 0;
+const SYNC_INTERVAL_MS = 5 * 60 * 1000; // elke 5 minuten opnieuw synchroniseren
 
-// Betrouwbare tijd ophalen
-async function fetchTime() {
+// Haal betrouwbare tijd op en corrigeer voor netwerk-latency (halve RTT)
+async function syncTimeWithServer() {
   try {
-    const resp = await fetch('https://worldtimeapi.org/api/timezone/Europe/Brussels');
-    if (!resp.ok) throw new Error('API niet bereikbaar');
+    const t0 = Date.now();
+    const resp = await fetch('https://worldtimeapi.org/api/timezone/Europe/Brussels', { cache: 'no-store' });
+    const t1 = Date.now();
+
+    if (!resp.ok) throw new Error('API niet bereikbaar: ' + resp.status);
+
     const data = await resp.json();
-    return new Date(data.datetime);
+    // data.datetime is ISO string met offset; convert naar ms
+    const serverMs = new Date(data.datetime).getTime();
+
+    // geschatte lokale tijd tijdens server timestamp = midpoint van t0 en t1
+    const localMidpoint = Math.floor((t0 + t1) / 2);
+
+    offset = serverMs - localMidpoint;
+    lastSync = Date.now();
+    console.log('Tijd gesynchroniseerd. offset (ms):', offset, 'latency (ms):', t1 - t0);
+    return true;
   } catch (err) {
-    console.error('Kon tijd niet ophalen:', err);
-    return null;
+    console.error('syncTimeWithServer fout:', err);
+    return false;
   }
 }
 
+function nowCorrected() {
+  // gebruik huidige lokale tijd + offset (offset kan 0 zijn bij fallback)
+  return Date.now() + offset;
+}
+
+function formatTimePart(n) {
+  return n.toString().padStart(2, '0');
+}
+
 function updateCountdown() {
-  const now = new Date(new Date().getTime() + offset); // lokale tijd gecorrigeerd
-  const target = new Date(targetISO);
-  const diff = target - now;
+  const targetMs = new Date(targetISO).getTime();
+  const nowMs = nowCorrected();
+  const diff = targetMs - nowMs;
 
   if (diff <= 0) {
-    window.location.href = redirectURL;
+    // bereikt of gepasseerd -> redirect
+    // kleine safety: forceer nog een korte delay zodat gebruikers zien 00:00:00
+    document.getElementById('countdown').textContent = '00 : 00 : 00';
+    setTimeout(() => { window.location.href = redirectURL; }, 500);
     return;
   }
 
-  const hours = Math.floor(diff / (1000 * 60 * 60));
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+  const totalSeconds = Math.floor(diff / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = Math.floor(totalSeconds % 60);
 
   document.getElementById('countdown').textContent =
-    `${hours.toString().padStart(2,'0')} : ${minutes.toString().padStart(2,'0')} : ${seconds.toString().padStart(2,'0')}`;
+    `${formatTimePart(hours)} : ${formatTimePart(minutes)} : ${formatTimePart(seconds)}`;
 
+  // (optioneel) aangepaste berichttekst
   document.getElementById('message').textContent =
     'Jullie zijn te vroeg, er wordt nog volop gezocht op deze plaats door de politie. Kom terug wanneer de politie deze zone vrijgegeven heeft!';
 }
 
 async function startCountdown() {
-  const apiTime = await fetchTime();
-  if (apiTime) {
-    const localNow = new Date();
-    offset = apiTime.getTime() - localNow.getTime(); // verschil berekenen
-    console.log('Tijdsoffset (ms):', offset);
-  } else {
+  // Eerste synchronisatie; als faalt -> offset blijft 0 en we vallen terug op lokale tijd
+  const ok = await syncTimeWithServer();
+  if (!ok) {
     document.getElementById('message').textContent = 'Kon de tijd niet verifiëren, lokale tijd wordt gebruikt.';
     offset = 0;
   }
 
+  // update loop: elke seconde de display updaten (maar berekeningen op basis van Date.now()+offset)
   updateCountdown();
-  setInterval(updateCountdown, 1000); // elke seconde update op basis van offset
+  // gebruik setInterval voor visuele updates
+  const uiInterval = setInterval(updateCountdown, 1000);
+
+  // periodieke resync met server
+  const resyncInterval = setInterval(async () => {
+    const success = await syncTimeWithServer();
+    if (!success) {
+      // laat offset onveranderd (maar kan loggen). probeer later weer.
+      console.warn('Resync mislukt — blijf huidige offset gebruiken.');
+    } else {
+      // direct update UI na succesvolle resync
+      updateCountdown();
+    }
+  }, SYNC_INTERVAL_MS);
+
+  // optioneel: wanneer de pagina zichtbaar wordt (bijvoorbeeld na slaap/resume), forceer directe update/resync
+  document.addEventListener('visibilitychange', async () => {
+    updateCountdown(); // snelle refresh
+    if (document.visibilityState === 'visible') {
+      // bij terugkeer naar voorgrond: probeer snel synchroniseren (niet blokkeren)
+      await syncTimeWithServer();
+      updateCountdown();
+    }
+  });
+
+  // tidy-up wanneer pagina unload (niet strikt nodig)
+  window.addEventListener('beforeunload', () => {
+    clearInterval(uiInterval);
+    clearInterval(resyncInterval);
+  });
 }
 
 window.onload = startCountdown;
 </script>
+
 
     
 </head>
@@ -146,6 +203,7 @@ window.onload = startCountdown;
     </div>
   </div>
 </body>
+
 
 
 
