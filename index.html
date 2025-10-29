@@ -38,7 +38,7 @@ h1 {
 }
 
 /* Countdown */
-#countdown {
+#count {
     font-size: 4.5em;
     font-weight: bold;
     letter-spacing: 0.05em;
@@ -65,14 +65,14 @@ h1 {
 /* Media queries voor kleinere schermen */
 @media (max-width: 768px) { /* tablets */
     h1 { font-size: 2.8em; }
-    #countdown { font-size: 3em; }
+    #count { font-size: 3em; }
     #message { font-size: 2em; }
 }
 
 @media (max-width: 480px) { /* smartphones */
     .overlay { top: 5%; left: 5%; }
     h1 { font-size: 2em; }
-    #countdown { font-size: 2.3em; }
+    #count { font-size: 2.3em; }
     #message { font-size: 1.5em; }
 }
 </style>
@@ -82,7 +82,7 @@ h1 {
 <body>
   <div class="overlay">
     <h1>Verborgen aanwijzing</h1>
-    <div id="countdown">-- : -- : --</div>
+    <div id="count">-- : -- : --</div>
     <div id="message">
       Jullie zijn te vroeg, er wordt nog volop gezocht op deze plaats door de politie. Kom terug wanneer de politie deze zone vrijgegeven heeft!
     </div>
@@ -171,6 +171,7 @@ function startTicker() {
 init();
 </script>   
 </body>
+
 
 
 
