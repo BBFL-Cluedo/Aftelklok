@@ -78,64 +78,62 @@ h1 {
 </style>
     
 <script>
-// Configuratie
-const redirectURL = 'https://bbfl.formaloo.co/bbfl_aanwijzing'; // vervang door jouw URL
-const targetISO = '2025-11-01T22:30:00+02:00'; // UTC+2 (Brussels) zomertijd
+const redirectURL = 'https://bbfl.formaloo.co/bbfl_aanwijzing';
+const targetISO = '2025-11-01T22:30:00+02:00';
+let offset = 0; // verschil tussen lokale tijd en API-tijd in ms
 
-// Haal betrouwbare tijd op van API
+// Betrouwbare tijd ophalen
 async function fetchTime() {
-    try {
-        const resp = await fetch('https://worldtimeapi.org/api/timezone/Europe/Brussels');
-        if (!resp.ok) throw new Error('API niet bereikbaar');
-        const data = await resp.json();
-        return new Date(data.datetime);
-    } catch (err) {
-        console.error('Kon tijd niet ophalen:', err);
-        return null;
-    }
+  try {
+    const resp = await fetch('https://worldtimeapi.org/api/timezone/Europe/Brussels');
+    if (!resp.ok) throw new Error('API niet bereikbaar');
+    const data = await resp.json();
+    return new Date(data.datetime);
+  } catch (err) {
+    console.error('Kon tijd niet ophalen:', err);
+    return null;
+  }
 }
 
-// Update de countdown
 function updateCountdown() {
-    if (!currentTime) return;
+  const now = new Date(new Date().getTime() + offset); // lokale tijd gecorrigeerd
+  const target = new Date(targetISO);
+  const diff = target - now;
 
-    const target = new Date(targetISO);
-    const diff = target - currentTime;
+  if (diff <= 0) {
+    window.location.href = redirectURL;
+    return;
+  }
 
-    if (diff <= 0) {
-        window.location.href = redirectURL;
-        return;
-    }
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+  document.getElementById('countdown').textContent =
+    `${hours.toString().padStart(2,'0')} : ${minutes.toString().padStart(2,'0')} : ${seconds.toString().padStart(2,'0')}`;
 
-    // Toon grote klok
-    document.getElementById('countdown').textContent = 
-        `${hours.toString().padStart(2,'0')} : ${minutes.toString().padStart(2,'0')} : ${seconds.toString().padStart(2,'0')}`;
-    document.getElementById('message').textContent ='Jullie zijn te vroeg, er wordt nog volop gezocht op deze plaats door de politie. Kom terug wanneer de politie deze zone vrijgegeven heeft!';
-
+  document.getElementById('message').textContent =
+    'Jullie zijn te vroeg, er wordt nog volop gezocht op deze plaats door de politie. Kom terug wanneer de politie deze zone vrijgegeven heeft!';
 }
 
-// Start countdown
 async function startCountdown() {
-    currentTime = await fetchTime();
-    if (!currentTime) {
-        document.getElementById('message').textContent = 'Kon de tijd niet verifiëren, lokale tijd wordt gebruikt.';
-        currentTime = new Date(); // fallback
-    }
+  const apiTime = await fetchTime();
+  if (apiTime) {
+    const localNow = new Date();
+    offset = apiTime.getTime() - localNow.getTime(); // verschil berekenen
+    console.log('Tijdsoffset (ms):', offset);
+  } else {
+    document.getElementById('message').textContent = 'Kon de tijd niet verifiëren, lokale tijd wordt gebruikt.';
+    offset = 0;
+  }
 
-    // Update elke seconde lokaal
-    updateCountdown();
-    setInterval(() => {
-        currentTime = new Date(currentTime.getTime() + 1000); // teller loopt lokaal
-        updateCountdown();
-    }, 1000);
+  updateCountdown();
+  setInterval(updateCountdown, 1000); // elke seconde update op basis van offset
 }
 
 window.onload = startCountdown;
 </script>
+
     
 </head>
     
@@ -148,6 +146,7 @@ window.onload = startCountdown;
     </div>
   </div>
 </body>
+
 
 
 
